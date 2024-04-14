@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEARBY policeS</title>
+    <script src="https://js.api.here.com/v3/3.1/mapsjs-core.js"></script>
+    <script src="https://js.api.here.com/v3/3.1/mapsjs-service.js"></script>
+    <script src="https://js.api.here.com/v3/3.1/mapsjs-mapevents.js"></script>
+    <script src="https://js.api.here.com/v3/3.1/mapsjs-ui.js"></script>
+
+    <link rel="stylesheet" href="https://js.api.here.com/v3/3.1/mapsjs-ui.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+        }
+
+        #map-container {
+            height: 70vh;
+           
+            width: 100%;
+        }
+        #emergencyButton {
+            display: flex;
+            flex-direction: column; 
+            align-items: center; 
+            margin-top: 50px;
+            background-color: red;
+        }
+    
+    </style>
+</head>
+<body>
+    <div id="map-container"></div> 
+    <button id="emergencyButton">Emergency</button> <!-- Button for emergency -->
+    <script>
+        var platform = new H.service.Platform({
+            'apikey': 'YOUR API KEY'
+        });
+
+        var defaultLayers = platform.createDefaultLayers();
+        var map = new H.Map(
+            document.getElementById('map-container'), 
+            defaultLayers.vector.normal.map,
+            {
+                zoom: 15
+            });
+
+        var behavior = new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
+        var service = platform.getSearchService();
+        var userMarker = null; // Marker for user
+        var policeMarker = null; // Marker for nearest police
+
+        // Initialize the UI component
+        var ui = H.ui.UI.createDefault(map, defaultLayers);
+
+        // Get user's current location
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition((pos) => {
+                var userLatLng = {
+                    lat: pos.coords.latitude,
+                    lng: pos.coords.longitude
+                };
+
+                // Center the map at the user's current location
+                map.setCenter(userLatLng);
+
+                // Create a marker at the user's current location with a home icon
+                userMarker = new H.map.Marker(userLatLng, {
+                    icon: new H.map.Icon('https://img.icons8.com/fluent/48/000000/home.png') // Home icon
+                });
+                map.addObject(userMarker);
+
+                // Perform reverse geocoding to get user's current address
+                reverseGeocode(userLatLng, (address) => {
+                    // Search for nearby polices
+                    service.browse({
+                        at: userLatLng.lat + ',' + userLatLng.lng,
+                        limit: 5,
+                        categories: '700-7300-0112', // Category ID for polices
+                    }, (result) => {
+                        // Initialize variables for the police with minimum duration
+                        var minDuration = Infinity;
+                        var closestpoliceLatLng = null;
+                        var closestpoliceName = null;
+
+                        // Iterate through each police
+                        result.items.forEach((item) => {
+                            var policeLatLng = item.position;
+                            var policeName = item.title;
+
+                            // Calculate route and determine duration
+                            calculateRouteFromAtoB(platform, userLatLng, policeLatLng, (duration) => {
+                                // If this police has a shorter duration, update closest police
+                                if (duration < minDuration) {
+                                    minDuration = duration;
+                                    closestpoliceLatLng = policeLatLng;
+                                    closestpoliceName = policeName;
+
+                                    // Remove previously added policeMarker if any
+                                    if (policeMarker) {
+                                        map.removeObject(policeMarker);
+                                    }
+
+                                    // Create policeMarker here, after closest police is determined
+                                    policeMarker = new H.map.Marker(closestpoliceLatLng);
+                                    policeMarker.setData({ name: closestpoliceName, duration: duration }); // Store police information in marker data
+                                    policeMarker.addEventListener('tap', function (evt) {
+                                        var data = evt.target.getData();
+                                        var policeName = data.name;
+                                        var duration = data.duration;
+                                        alert("Closest police: " + policeName + "\nDuration: " + duration + " seconds");
+                                    });
+                                    map.addObject(policeMarker);
+                                }
+                            });
+                        });
+
+                        // Event listener for emergency button
+                        document.getElementById("emergencyButton").addEventListener("click", function() {
+                            // Sending message with user's current location and address
+                            sendMessage(userLatLng, address);
+                        });
+                    });
+                });
+            });
+        } else {
+            alert('Geolocation is not supported by this browser.');
+        }
+
+        // Reverse geocode function
+        function reverseGeocode(userLatLng, callback) {
+            var reverseGeocodingUrl = `https://revgeocode.search.hereapi.com/v1/revgeocode?at=${userLatLng.lat},${userLatLng.lng}&lang=en-US&apikey=kvmRZD2v5zoIUmyBTPIFBGiUYNPw4BQfToxLSod10qM`;
+
+            fetch(reverseGeocodingUrl)
+                .then(response => response.json())
+                .then(data => {
+                    var address = data.items[0].address.label;
+                    alert("Your current address is: " + address);
+                    callback(address);
+                })
+                .catch(error => {
+                    console.error('Error fetching reverse geocode data:', error);
+                });
+        }
+
+        function calculateRouteFromAtoB(platform, userLatLng, policeLatLng, callback) {
+            var router = platform.getRoutingService(null, 8),
+                routeRequestParams = {
+                    routingMode: 'fast',
+                    transportMode: 'car',
+                    origin: userLatLng.lat + ',' + userLatLng.lng,
+                    destination: policeLatLng.lat + ',' + policeLatLng.lng,
+                    return: 'polyline,turnByTurnActions,actions,instructions,travelSummary'
+                };
+
+            router.calculateRoute(
+                routeRequestParams,
+                (result) => {
+                    var route = result.routes[0];
+                    var duration = 0;
+                    route.sections.forEach((section) => {
+                        duration += section.travelSummary.duration;
+                    });
+                    // Call the callback function with the duration
+                    callback(duration);
+                },
+                onError
+            );
+        }
+
+        function onError(error) {
+            alert('Can\'t reach the remote server');
+        }
+
+        // Function to send message with user's current location and address
+        function sendMessage(userLocation, address) {
+            const accountSid = 'YOUR SID';
+            const authToken = 'YOUR AUTH TOKEN';
+            const fromNumber = '+19387661877'; // Your Twilio phone number
+            const toNumber = 'YOUR DUMMY NO.'; // Recipient's phone number
+            const messageBody = 'Emergency Location: ' + address;
+
+            fetch('https://api.twilio.com/2010-04-01/Accounts/' + accountSid + '/Messages.json', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Basic ' + btoa(accountSid + ':' + authToken),
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: new URLSearchParams({
+                    'To': toNumber,
+                    'From': fromNumber,
+                    'Body': messageBody
+                })
+            })
+            .then(response => {
+                if (response.ok) {
+                    console.log('Message sent successfully.');
+                } else {
+                    console.error('Failed to send message.');
+                }
+            })
+            .catch(err => console.error('Error sending message:', err));
+        }
+    </script>
+</body>
+</html>

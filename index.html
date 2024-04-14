@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emergency Support</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+           
+            background-image: url('https://wallpaperaccess.com/full/1551239.jpg');
+        }
+        h1 {
+            font-size: 3.5rem;
+            text-align: center;
+            margin-top: 50px;
+            color: #007bff; 
+        }
+        #buttons {
+            display: flex;
+            flex-direction: column; 
+            align-items: center; 
+            margin-top: 50px;
+        }
+        .btn {
+            font-size: 1.5rem;
+            padding: 15px 30px;
+            margin: 10px 0; 
+            cursor: pointer;
+            background-color: #28a745; 
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            transition: background-color 0.3s ease;
+        }
+        .btn:hover {
+    background-color: #218838; 
+}
+
+    </style>
+</head>
+<body>
+    <h1>HEREvolution Emergency Support</h1>
+    <div id="buttons">
+        <!-- Update onclick event to load hospital.html -->
+        <button class="btn" onclick="loadHospitalPage()">Hospital Service</button>
+        <button class="btn" onclick="loadpolice()">Police Service</button>
+        <button class="btn" onclick="loadfire()">Fire Service</button>
+    </div>
+
+    <script>
+        function loadHospitalPage() {
+            // Load hospital.html when Hospital Service button is clicked
+            window.location.href = 'hospital.html';
+        }
+        function loadpolice() {
+            // Load hospital.html when Hospital Service button is clicked
+            window.location.href = 'police.html';
+        }
+        function loadfire() {
+            // Load hospital.html when Hospital Service button is clicked
+            window.location.href = 'fire.html';
+        }
+    </script>
+</body>
+</html>

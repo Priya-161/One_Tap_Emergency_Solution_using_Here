@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEARBY HOSPITALS</title>
+    <script src="https://js.api.here.com/v3/3.1/mapsjs-core.js"></script>
+    <script src="https://js.api.here.com/v3/3.1/mapsjs-service.js"></script>
+    <script src="https://js.api.here.com/v3/3.1/mapsjs-mapevents.js"></script>
+    <script src="https://js.api.here.com/v3/3.1/mapsjs-ui.js"></script>
+    <link rel="stylesheet" href="https://js.api.here.com/v3/3.1/mapsjs-ui.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+        }
+
+        #map-container {
+            height: 70vh; 
+            width: 100%; 
+        }
+    </style>
+</head>
+<body>
+    
+    <div id="map-container"></div> 
+
+    <script>
+        var platform = new H.service.Platform({
+            'apikey': 'TCjEfKUY00IP32EtWXlQS-WPz60hYJhaCIL9T9BD16I' 
+        });
+    
+        var defaultLayers = platform.createDefaultLayers();
+        var map = new H.Map(
+            document.getElementById('map-container'), 
+            defaultLayers.vector.normal.map,
+            {
+                zoom: 10
+            });
+    
+        var behavior = new H.mapevents.Behavior(new H.mapevents.MapEvents(map));
+        var service = platform.getSearchService();
+    
+       
+        var ui = H.ui.UI.createDefault(map, defaultLayers);
+    
+        
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition((pos) => {
+                var userLatLng = {
+                    lat: pos.coords.latitude,
+                    lng: pos.coords.longitude
+                };
+
+                // Create a marker at the user's current location with a home icon
+                var userMarker = new H.map.Marker(userLatLng, {
+                    icon: new H.map.Icon('https://img.icons8.com/fluent/48/000000/home.png') // Home icon
+                });
+                map.addObject(userMarker);
+                
+                // Center the map at the user's current location
+                map.setCenter(userLatLng);
+
+                // Search for nearby hospitals
+                service.browse({
+                    at: userLatLng.lat + ',' + userLatLng.lng,
+                    limit: 20,
+                    categories: '800-8000-0159', // Category ID for hospitals
+                }, (result) => {
+                    result.items.forEach((item) => {
+                        var hospitalLatLng = item.position;
+                        var hospitalName = item.title;
+                        // Create a marker for each nearby hospital
+                        var hospitalMarker = new H.map.Marker(hospitalLatLng);
+                        hospitalMarker.setData(hospitalName); // Store hospital name in marker data
+                        hospitalMarker.addEventListener('tap', function (evt) {
+                            var data = evt.target.getData();
+                            alert(data); // Show hospital name in an alert (you can customize this)
+                        });
+                        map.addObject(hospitalMarker);
+                    });
+                }, (error) => {
+                    console.error('Error fetching nearby hospitals:', error);
+                });
+            }, (error) => {
+                console.error('Error getting current location:', error);
+            });
+        } else {
+            console.error('Geolocation is not supported by this browser.');
+        }
+    </script>
+    
+</body>
+</html>
