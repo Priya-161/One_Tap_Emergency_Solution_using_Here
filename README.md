@@ -25,5 +25,7 @@ Recipient Number: Adjust the recipient's phone number in the sendMessage functio
 Contributors:
 Developed by: [Team Yuktika]
 Contact detail:[1priyagupta2003@gmail.com]
+Realitime Sms Example send to Emergency service:Emergency.jpg
+
 
 
